@@ -71,8 +71,8 @@ module Poloniex
     post 'returnOpenOrders', currencyPair: currency_pair
   end
 
-  def self.trade_history( currency_pair, start = 0, end_time = Time.now.to_i )
-    get 'returnTradeHistory', currencyPair: currency_pair, start: start, :end => end_time
+  def self.trade_history( currency_pair, start , end_time  )
+    get 'returnTradeHistory', currencyPair: currency_pair, start: start, end: end_time
   end
 
   def self.buy( currency_pair, rate, amount )
