@@ -2,6 +2,7 @@ require "poloniex/version"
 require 'rest-client'
 require 'openssl'
 require 'addressable/uri'
+require 'json'
 
 module Poloniex
 
@@ -47,16 +48,23 @@ module Poloniex
     post 'returnBalances'
   end
 
-  def self.lending_history( start = 0, end_time = Time.now.to_i )
-    post 'returnLendingHistory', start: start, :end => end_time
+  def self.lending_history( start = 0, end_time = Time.now.to_i, limit = 0 )
+    post 'returnLendingHistory', start: start, :end => end_time, :limit => limit
   end
 
   def self.currencies
     get 'returnCurrencies'
   end
 
-  def self.complete_balances
-    post 'returnCompleteBalances'
+  def self.complete_balances all_accounts=false
+    post 'returnCompleteBalances'     params = {}
+    params[:account] = 'all' if all_accounts
+    
+    post 'returnCompleteBalances', params
+  end
+
+  def self.order_trades( order_number )
+    post 'returnOrderTrades', orderNumber: order_number
   end
 
   def self.open_orders( currency_pair )
@@ -64,7 +72,7 @@ module Poloniex
   end
 
   def self.trade_history( currency_pair, start = 0, end_time = Time.now.to_i )
-    post 'returnTradeHistory', currencyPair: currency_pair, start: start, :end => end_time
+    get 'returnTradeHistory', currencyPair: currency_pair, start: start, :end => end_time
   end
 
   def self.buy( currency_pair, rate, amount )
@@ -83,7 +91,7 @@ module Poloniex
     post 'moveOrder', orderNumber: order_number, rate: rate
   end
 
-  def self.withdraw( currency, amount, address )
+  def self.widthdraw( currency, amount, address )
     post 'widthdraw', currency: currency, amount: amount, address: address
   end
 
@@ -107,6 +115,22 @@ module Poloniex
     post 'marginBuy', currencyPair: currency_pair, rate: rate, amount: amount
   end
 
+  def self.margin_buy(currency_pair, rate, amount, maximum_lending_rate=nil)
+    options = { currencyPair: currency_pair, rate: rate, amount: amount }
+    options[:lendingRate] = maximum_lending_rate if maximum_lending_rate
+    post 'marginBuy', options
+  end
+
+  def self.margin_sell(currency_pair, rate, amount, maximum_lending_rate=nil)
+    options = { currencyPair: currency_pair, rate: rate, amount: amount }
+    options[:lendingRate] = maximum_lending_rate if maximum_lending_rate
+    post 'marginSell', options
+  end 
+
+  def self.close_margin_position(currency_pair)
+    post 'closeMarginPosition', currencyPair: currency_pair
+  end
+
   def self.margin_sell(currency_pair, rate, amount)
     post 'marginSell', currencyPair: currency_pair, rate: rate, amount: amount
   end
@@ -123,6 +147,16 @@ module Poloniex
     post 'returnDepositsWithdrawals', start: start, :end => end_time
   end
 
+  def self.chart_data( currency_pair, start_time, end_time, period)
+    get 'returnChartData', currencyPair: currency_pair, period: period,  start: start_time.to_i, :end => end_time.to_i
+  end
+  
+
+
+  def self.loanOrders(currency)
+    get 'returnLoanOrders', currency: currency
+  end
+
   protected
 
   def self.resource
@@ -131,13 +165,15 @@ module Poloniex
 
   def self.get( command, params = {} )
     params[:command] = command
-    resource[ 'public' ].get params: params
+    response = resource[ 'public' ].get params: params
+    JSON.parse(response.body)
   end
 
   def self.post( command, params = {} )
     params[:command] = command
     params[:nonce]   = (Time.now.to_f * 10000000).to_i
-    resource[ 'tradingApi' ].post params, { Key: configuration.key , Sign: create_sign( params ) }
+    response = resource[ 'tradingApi' ].post params, { Key: configuration.key , Sign: create_sign( params ) }
+    JSON.parse(response.body)
   end
 
   def self.create_sign( data )
