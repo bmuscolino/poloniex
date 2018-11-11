@@ -57,9 +57,7 @@ module Poloniex
   end
 
   def self.complete_balances all_accounts=false
-    post 'returnCompleteBalances'     params = {}
-    params[:account] = 'all' if all_accounts
-    
+    params[:account] = 'all' if all_accounts    
     post 'returnCompleteBalances', params
   end
 
